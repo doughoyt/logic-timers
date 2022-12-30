@@ -1,5 +1,5 @@
 <script type="text/javascript">
-    RED.nodes.registerType('thingzi-schedule', {
+    RED.nodes.registerType('doughoyt-schedule', {
         category: 'function',
         color: '#9ccff5',
         defaults: {
@@ -7,8 +7,10 @@
             events: { value: "[]" },
             sendType: { value: 'msg' },
             sendId: { value: 'payload', required: true },
-            onPayloadType: { value: "str" },
-            onPayload: { value: "ON", validate: RED.validators.typedInput("onPayloadType") },
+            on1PayloadType: { value: "str" },
+            on1Payload: { value: "ON", validate: RED.validators.typedInput("on1PayloadType") },
+            on2PayloadType: { value: "str" },
+            on2Payload: { value: "ON", validate: RED.validators.typedInput("on2PayloadType") },
             offPayloadType: { value: "str" },
             offPayload: { value: "OFF", validate: RED.validators.typedInput("offPayloadType") },
             startupMessage: { value: true },
@@ -24,7 +26,7 @@
         paletteLabel: 'schedule',
         oneditprepare: function () {
             var node = this;
-
+            const colors = ["", "#3a87ad", "#edd466"];
             node.fromMoment = function (m) {
                 m = moment(m);
                 return {
@@ -58,10 +60,12 @@
 
                     eventData = {
                         id: node.nextId(),
-                        title: '',
+                        title: e.onNum + '',
                         start: node.toMoment(e.start),
                         end: node.toMoment(e.end),
                         stick: true,
+                        onNum: e.onNum,
+                        backgroundColor: colors[e.onNum],
                     };
 
                     if (eventData.start.isAfter(eventData.end)) {
@@ -98,10 +102,11 @@
 
                         var eventData = {
                             id: node.nextId(),
-                            title: '',
+                            title: '1',
                             start: start,
                             end: end,
-                            stick: true,
+                            onNum: 1,
+                            backgroundColor: colors[1],
                         };
 
                         $('#calendar').fullCalendar('renderEvent', eventData, true);
@@ -121,10 +126,25 @@
                         return false;
                     },
                     eventClick: function (event, jsEvent, view) {
-                        $('#calendar').fullCalendar('removeEvents', event._id);
-                        node.configuredEvents = node.configuredEvents.filter(function (e) {
-                            return event.id != e.id;
-                        });
+                        // Cycle through 1, 2, off
+                        if (event.onNum === 1) {
+                            event.onNum = 2;
+                            event.title = '2';
+                            event.backgroundColor = colors[2];
+                            $('#calendar').fullCalendar('updateEvent', event);
+
+                            node.configuredEvents.forEach(function (e) {
+                                if (event.id == e.id) {
+                                    e.onNum = 2;
+                                    e.title = '2';
+                                }
+                            });
+                        } else {
+                            $('#calendar').fullCalendar('removeEvents', event._id);
+                            node.configuredEvents = node.configuredEvents.filter(function (e) {
+                                return event.id != e.id;
+                            });
+                        }
                     },
                     eventResize: function (event, delta, revertFunc) {
                         node.configuredEvents.forEach(function (e) {
@@ -149,10 +169,17 @@
                     types: ['msg', 'flow', 'global']
                 });
 
-                $("#node-input-onPayloadType").val(node.onPayloadType);
-                $("#node-input-onPayload").typedInput({
+                $("#node-input-on1PayloadType").val(node.on1PayloadType);
+                $("#node-input-on1Payload").typedInput({
                     default: 'str',
-                    typeField: $("#node-input-onPayloadType"),
+                    typeField: $("#node-input-on1PayloadType"),
+                    types: ['flow','global','str','num','bool','json','date']
+                });
+
+                $("#node-input-on2PayloadType").val(node.on2PayloadType);
+                $("#node-input-on2Payload").typedInput({
+                    default: 'str',
+                    typeField: $("#node-input-on2PayloadType"),
                     types: ['flow','global','str','num','bool','json','date']
                 });
 
@@ -164,9 +191,9 @@
                 });
             }
 
-            $.getScript('thingzi/schedule/moment.min.js')
+            $.getScript('doughoyt/schedule/moment.min.js')
                 .done(function (data, textStatus, jqxhr) {
-                    $.getScript('thingzi/schedule/fullcalendar.min.js')
+                    $.getScript('doughoyt/schedule/fullcalendar.min.js')
                         .done(function (data, textStatus, jqxhr) {
                             setup(node);
                         })
@@ -185,6 +212,8 @@
                 return {
                     start: node.fromMoment(e.start),
                     end: node.fromMoment(e.end),
+                    onNum: e.onNum,
+                    title: e.onNum+'',
                 };
             });
             node.events = JSON.stringify(events);
@@ -195,13 +224,13 @@
     });
 </script>
 
-<script type="text/html" data-template-name="thingzi-schedule">
+<script type="text/html" data-template-name="doughoyt-schedule">
     <div class="form-row">
         <label for="node-input-name" style="width: 100px"><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <link rel='stylesheet' href='thingzi/schedule/fullcalendar.min.css' />
+        <link rel='stylesheet' href='doughoyt/schedule/fullcalendar.min.css' />
         <style type="text/css">.wc-business-hours { font-size: 1.0em; }</style>
         <div id="calendar" style="width: 100%; border: 1px solid grey"></div>
         <div class="form-row">
@@ -217,9 +246,14 @@
         <input type="hidden" id="node-input-sendType">
     </div>
     <div class="form-row">
-        <label for="node-input-onPayload"><i class="fa fa-envelope"></i> On Value</label>
-        <input type="text" id="node-input-onPayload" placeholder="ON">
-        <input type="hidden" id="node-input-onPayloadType">
+        <label for="node-input-on1Payload"><i class="fa fa-envelope"></i> On 1 Value</label>
+        <input type="text" id="node-input-on1Payload" placeholder="ON">
+        <input type="hidden" id="node-input-on1PayloadType">
+    </div>
+    <div class="form-row">
+        <label for="node-input-on2Payload"><i class="fa fa-envelope"></i> On 2 Value</label>
+        <input type="text" id="node-input-on2Payload" placeholder="ON">
+        <input type="hidden" id="node-input-on2PayloadType">
     </div>
     <div class="form-row">
         <label for="node-input-offPayload"><i class="fa fa-envelope"></i> Off Value</label>
@@ -240,7 +274,7 @@
     </div>
 </script>
 
-<script type="text/html" data-help-name="thingzi-schedule">
+<script type="text/html" data-help-name="doughoyt-schedule">
   <p>Set events for a weekly schedule using a visual calendar.</p>
 
   <h3>Inputs</h3>
@@ -264,8 +298,10 @@
   shown in the status.</p>
   
   <p>Schedule periods can be created on any week day by clicking once on the calendar 
-  and can be resized or moved as required within the same day.  Clicking on an existing 
-  event will delete it. </p>
+  and can be resized or moved as required within the same day.</p>
+  
+  <p>>Clicking on an existing ON1 event will change it to ON2.  Clickiung on an ON2 event
+  will delete it. </p>
   
   <p>The <code>ON</code> event will be sent at the start of any period and the <code>OFF</code> 
   event at the end.</p>

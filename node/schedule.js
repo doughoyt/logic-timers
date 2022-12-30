@@ -3,7 +3,7 @@ module.exports = function (RED) {
 
     const moment = require('moment');
 
-    RED.nodes.registerType('thingzi-schedule', function (config) {
+    RED.nodes.registerType('doughoyt-schedule', function (config) {
         RED.nodes.createNode(this, config);
         const node = this;
         const minutesInDay = 60 * 24;
@@ -11,8 +11,10 @@ module.exports = function (RED) {
         this.events = JSON.parse(config.events);
         this.sendType = config.sendType;
         this.sendId = config.sendId;
-        this.onPayload = config.onPayload;
-        this.onPayloadType = config.onPayloadType;
+        this.on1Payload = config.on1Payload;
+        this.on1PayloadType = config.on1PayloadType;
+        this.on2Payload = config.on2Payload;
+        this.on2PayloadType = config.on2PayloadType;
         this.offPayload = config.offPayload;
         this.offPayloadType = config.offPayloadType;
 
@@ -26,17 +28,16 @@ module.exports = function (RED) {
             var now = moment();;
             var dow = now.day();
             var mow = (dow * minutesInDay) + (now.hours() * 60) + now.minutes();
-            var match = false;
+            var match = 0;
             
             for (var event of node.events) {
                 var startMow = (event.start.dow * minutesInDay) + event.start.mod;
                 var endMow = (event.end.dow * minutesInDay) + + event.end.mod;
                 if (endMow === 0) endMow = 7 * minutesInDay; // Handle edge case
                 if (mow >= startMow  && mow < endMow) {
-                    match = true;
+                    match = event.onNum;
                 }
             }
-
             return match;
         }
 
@@ -99,7 +100,7 @@ module.exports = function (RED) {
 
         // Check for new state
         this.update = function(alwaysSend = false) {
-            var newState = node.scheduleEnabled ? node.getState() : false;
+            var newState = node.scheduleEnabled ? node.getState() : 0;
             var sendMessage = alwaysSend;
 
             // Has the state changed
@@ -114,11 +115,19 @@ module.exports = function (RED) {
             // Message to send?
             if (sendMessage) {
                 // Get the message payload
-                if (node.state) {
-                    node.sendMessage(node.getValue(node.onPayloadType, node.onPayload));
-                } else {
-                    node.sendMessage(node.getValue(node.offPayloadType, node.offPayload));
-                }
+                switch(node.state) {
+                    case 0:
+                        node.sendMessage(node.getValue(node.offPayloadType, node.offPayload));
+                        break;
+                    case 1:
+                        node.sendMessage(node.getValue(node.on1PayloadType, node.on1Payload));
+                      break;
+                    case 2:
+                        node.sendMessage(node.getValue(node.on2PayloadType, node.on2Payload));
+                      break;
+                    default:
+                        node.sendMessage(node.getValue(node.offPayloadType, node.offPayload));
+                  }
             }
 
             // Always update the status
@@ -145,13 +154,13 @@ module.exports = function (RED) {
         });
 
         // Start interval
-        this.updateInterval = setInterval(node.update, 60000);
+        this.updateInterval = setInterval(node.update, 10000); // Look every 10 seconds
 
         // Initial update
         setTimeout(node.update, 100);
     });
 
-    RED.httpAdmin.get('/thingzi/schedule/*', function (req, res) {
+    RED.httpAdmin.get('/doughoyt/schedule/*', function (req, res) {
         var options = {root: __dirname + '/schedule/', dotfiles: 'deny'};
         res.sendFile(req.params[0], options)
     })
