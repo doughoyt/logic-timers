@@ -134,7 +134,7 @@ module.exports = function (RED) {
             node.status({
                 fill: node.state ? 'green' : 'grey', 
                 shape: node.scheduleEnabled ? 'dot' : 'ring', 
-                text: node.state ? 'ON' : 'OFF' 
+                text: node.state ? 'ON: '+node.state : 'OFF' 
             });
         }
         
